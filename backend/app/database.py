@@ -1,23 +1,28 @@
-# app/database.py
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-# Создаем файл базы данных game.db в корневой папке backend
-SQLALCHEMY_DATABASE_URL = "sqlite:///./game.db"
+from app.core.config import settings
 
-# Подключаемся (connect_args нужен для SQLite, чтобы работало в многопоточке)
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+
+SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
+
+connect_args = (
+    {"check_same_thread": False}
+    if SQLALCHEMY_DATABASE_URL.startswith("sqlite")
+    else {}
 )
 
-# Фабрика сессий для работы с БД
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args=connect_args,
+)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Базовый класс для моделей
 Base = declarative_base()
 
-# Функция, которую мы будем вызывать в эндпоинтах для получения сессии БД
+
 def get_db():
     db = SessionLocal()
     try:
