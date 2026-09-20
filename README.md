@@ -6,6 +6,9 @@ REST API для RPG-игры «Убежище в замке»: аутентиф�
 **Swagger UI:** https://api.castle-survival.ru/docs  
 **Сайт:** https://castle-survival.ru  
 **Игра:** [GitHub — RPG_Pygame_Game](https://github.com/Odesh-Gran/RPG_Pygame_Game)
+![CI](https://github.com/Odesh-Gran/Game-API/actions/workflows/ci.yml/badge.svg)
+
+REST API для RPG-игры...
 
 ---
 
