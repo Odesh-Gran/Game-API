@@ -1,0 +1,32 @@
+services:
+  api:
+    build: ./backend
+    container_name: game-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://gameapi:gameapi_secret@db:5432/gameapi
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    container_name: game-api-db
+    environment:
+      POSTGRES_DB: gameapi
+      POSTGRES_USER: gameapi
+      POSTGRES_PASSWORD: gameapi_secret
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gameapi -d gameapi"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
