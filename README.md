@@ -32,11 +32,14 @@ API работает **24/7** на VPS с **HTTPS**, **автозапуском*
 - Pydantic 2.13 (валидация)
 - pydantic-settings (конфигурация)
 - SQLite (БД)
+- PostgreSQL 16
 - JWT (python-jose)
 - passlib (хеширование паролей)
 
 **Инфраструктура:**
 - Nginx (reverse proxy)
+- Docker
+- Docker Compose
 - Let's Encrypt (SSL)
 - systemd (автозапуск)
 - ufw (firewall)
