@@ -1,10 +1,12 @@
 # app/schemas.py
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
+
 
 class AchievementCreate(BaseModel):
     name: str
     description: str | None = None
+
 
 class AchievementResponse(BaseModel):
     id: int
@@ -12,5 +14,4 @@ class AchievementResponse(BaseModel):
     description: str | None
     earned_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
