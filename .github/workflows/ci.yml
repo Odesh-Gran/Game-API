@@ -28,4 +28,4 @@ jobs:
       - name: Run tests with coverage
         run: |
           cd backend
-          pytest -v --cov=app --cov-report=term-missingй
+          pytest -v --cov=app --cov-report=term-missing
