@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine, Base
 from app.routes import auth, achievements
+from app.routes import download
 from app.core.config import settings
 
 
@@ -40,6 +41,7 @@ app.add_middleware(
 # Подключаем роутеры
 app.include_router(auth.router)
 app.include_router(achievements.router)
+app.include_router(download.router)
 
 
 @app.get("/")
