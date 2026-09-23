@@ -12,6 +12,8 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+    volumes:
+      - /var/www/castle-survival.ru/downloads:/downloads:ro   # ← ДОБАВИЛ
 
   db:
     image: postgres:16-alpine
