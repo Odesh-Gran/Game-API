@@ -22,7 +22,6 @@ jobs:
             cd /root/Game-API
             git pull origin main
             cd backend
-            source /root/Game-API/venv/bin/activate
-            pip install -r requirements.txt
-            alembic upgrade head
+            /root/Game-API/venv/bin/pip install -r requirements.txt
+            /root/Game-API/venv/bin/alembic upgrade head
             systemctl restart game-api
