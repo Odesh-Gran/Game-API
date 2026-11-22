@@ -1,60 +1,114 @@
 # app/routes/auth.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.models import User
-from app.auth import hash_password, verify_password, create_access_token
 from pydantic import BaseModel, EmailStr
 
-# Схемы для валидации данных
+from app.limiter import limiter
+
+from app.database import get_db
+from app.models import User
+from app.auth import (
+    hash_password,
+    verify_and_migrate,
+    create_access_token,
+    create_refresh_token,
+    verify_refresh_token,
+    revoke_refresh_token,
+)
+
+router = APIRouter(prefix="/api/v1", tags=["auth"])
+
+
+# ===================== СХЕМЫ =====================
+
 class UserRegister(BaseModel):
     username: str
     email: EmailStr
     password: str
 
+
 class UserLogin(BaseModel):
     username: str
     password: str
 
-# Создаем роутер с префиксом /api/v1
-router = APIRouter(prefix="/api/v1", tags=["auth"])
 
-# ЭНДПОИНТ РЕГИСТРАЦИИ
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+# ===================== РЕГИСТРАЦИЯ =====================
+
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-def register(user_data: UserRegister, db: Session = Depends(get_db)):
-    # Проверяем, занят ли логин
-    existing_user = db.query(User).filter(User.username == user_data.username).first()
-    if existing_user:
+@limiter.limit("3/minute")          # 👈 3 регистрации в минуту
+def register(request: Request, user_data: UserRegister, db: Session = Depends(get_db)):  # 👈 request
+    existing = db.query(User).filter(User.username == user_data.username).first()
+    if existing:
         raise HTTPException(status_code=400, detail="Логин уже занят")
-    
-    # Хешируем пароль
-    hashed = hash_password(user_data.password)
-    
-    # Создаем нового пользователя
+
     new_user = User(
         username=user_data.username,
         email=user_data.email,
-        password_hash=hashed
+        password_hash=hash_password(user_data.password),
     )
-    
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    
+
     return {"message": "Аккаунт создан!"}
 
-# ЭНДПОИНТ ЛОГИНА
+
+# ===================== ЛОГИН =====================
+
 @router.post("/login")
-def login(user_data: UserLogin, db: Session = Depends(get_db)):
-    # Ищем пользователя по логину
+@limiter.limit("5/minute")          # 👈 5 попыток в минуту
+def login(request: Request, user_data: UserLogin, db: Session = Depends(get_db)):  # 👈 request
     user = db.query(User).filter(User.username == user_data.username).first()
     if not user:
         raise HTTPException(status_code=401, detail="Неверный логин или пароль")
-    
-    # Проверяем пароль
-    if not verify_password(user_data.password, user.password_hash):
+
+    # bcrypt + ленивая миграция старых sha256_crypt хешей
+    if not verify_and_migrate(user_data.password, user.password_hash, db, user):
         raise HTTPException(status_code=401, detail="Неверный логин или пароль")
-    
-    # Создаем настоящий JWT-токен
+
     access_token = create_access_token(data={"sub": str(user.id)})
-    return {"access_token": access_token, "token_type": "bearer"}
+    refresh_token = create_refresh_token(db, user.id)
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }
+
+
+# ===================== REFRESH (ротация) =====================
+
+@router.post("/refresh")
+def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
+    token_row = verify_refresh_token(db, body.refresh_token)
+    if token_row is None:
+        raise HTTPException(status_code=401, detail="Неверный или истёкший refresh-токен")
+
+    # Ротация: отзываем старый, выдаём новую пару
+    revoke_refresh_token(db, token_row)
+
+    access_token = create_access_token(data={"sub": str(token_row.user_id)})
+    new_refresh = create_refresh_token(db, token_row.user_id)
+
+    return {
+        "access_token": access_token,
+        "refresh_token": new_refresh,
+        "token_type": "bearer",
+    }
+
+
+# ===================== LOGOUT =====================
+
+@router.post("/logout")
+def logout(body: RefreshRequest, db: Session = Depends(get_db)):
+    token_row = verify_refresh_token(db, body.refresh_token)
+    if token_row is None:
+        # уже отозван/истёк — не ошибка, просто выходим
+        return {"message": "Выход выполнен"}
+
+    revoke_refresh_token(db, token_row)
+    return {"message": "Выход выполнен"}

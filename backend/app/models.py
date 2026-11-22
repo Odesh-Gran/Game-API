@@ -1,5 +1,5 @@
 # app/models.py
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Boolean
 from sqlalchemy.sql import func
 from app.database import Base
 
@@ -23,3 +23,11 @@ class Achievement(Base):
     name = Column(String, nullable=False)          # Название достижения
     description = Column(String, nullable=True)    # Описание (опционально)
     earned_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    token_hash = Column(String, unique=True, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    revoked = Column(Boolean, default=False)    
