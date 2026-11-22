@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.main import app
 from app.database import Base, get_db
+from app.limiter import limiter   # 👈 импорт лимитера
 
 
 # In-memory БД (не файл!)
@@ -30,6 +31,14 @@ def override_get_db():
 
 
 app.dependency_overrides[get_db] = override_get_db
+
+
+@pytest.fixture(autouse=True)
+def disable_rate_limit():
+    """Отключаем rate limiting во время тестов."""
+    limiter.enabled = False
+    yield
+    limiter.enabled = True
 
 
 @pytest.fixture(autouse=True)
